@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+/dist/
+
+# TypeScript incremental metadata
+*.tsbuildinfo
+
+# OS + package manager noise
+.DS_Store
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
