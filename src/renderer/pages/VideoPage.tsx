@@ -74,7 +74,7 @@ const VideoWrap = styled.div`
   flex: 1;
   background: #000;
   display: flex;
-  align-items: center;
+  /* align-items: center; */
   justify-content: center;
   overflow: hidden;
 `;
