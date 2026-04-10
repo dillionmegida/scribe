@@ -255,6 +255,7 @@ export default function VideoPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [transcribing, setTranscribing] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
+  const [progressPercent, setProgressPercent] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [currentTime, setCurrentTime] = useState(0);
   const [toast, setToast] = useState('');
@@ -263,7 +264,10 @@ export default function VideoPage() {
   useEffect(() => {
     window.api.getProject(videoId!).then(p => { if (p) setProject(p); });
     const unsub = window.api.onTranscribeProgress(data => {
-      if (data.projectId === videoId) setProgressMsg(data.step);
+      if (data.projectId === videoId) {
+        setProgressMsg(data.step);
+        if (typeof data.percent === 'number') setProgressPercent(data.percent);
+      }
     });
     return unsub;
   }, [videoId]);
@@ -283,7 +287,8 @@ export default function VideoPage() {
     if (!project) return;
     setTranscribing(true);
     setError('');
-    setProgressMsg('Converting audio…');
+    setProgressMsg('Preparing…');
+    setProgressPercent(0);
     try {
       const updated = await window.api.transcribe(project.id);
       setProject(updated);
@@ -292,6 +297,7 @@ export default function VideoPage() {
     } finally {
       setTranscribing(false);
       setProgressMsg('');
+      setProgressPercent(null);
     }
   }
 
@@ -375,7 +381,14 @@ export default function VideoPage() {
           ) : transcribing ? (
             <Center>
               <Spinner />
-              <span>{progressMsg || 'Working…'}</span>
+              {progressPercent !== null && (
+                <div style={{ fontSize: 26, fontWeight: 700, color: '#c8f060' }}>
+                  {progressPercent}%
+                </div>
+              )}
+              <span style={{ textAlign: 'center', maxWidth: 320, color: '#d0d0d0' }}>
+                {progressMsg || 'Working…'}
+              </span>
             </Center>
           ) : (
             <Center>

@@ -22,7 +22,7 @@ declare global {
       transcribe: (id: string) => Promise<Project>;
       deleteProject: (id: string) => Promise<boolean>;
       showInFinder: (filePath: string) => Promise<void>;
-      onTranscribeProgress: (cb: (data: { projectId: string; step: string }) => void) => () => void;
+      onTranscribeProgress: (cb: (data: { projectId: string; step: string; percent?: number }) => void) => () => void;
     };
   }
 }
