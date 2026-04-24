@@ -210,15 +210,18 @@ ipcMain.handle('transcribe', async (event, projectId: string) => {
     } else {
       // whisper.cpp binary
       const modelCandidates = [
-        path.join(__dirname, '../../../whisper-models/ggml-base.en.bin'),
+        path.join(__dirname, '../../../whisper-cpp/models/ggml-base.en.bin'),
         path.join(__dirname, '../../../whisper-models/ggml-base.bin'),
         path.join(os.homedir(), 'whisper.cpp/models/ggml-base.en.bin'),
+        path.join(os.homedir(), '../whisper.cpp/models/ggml-base.en.bin'),
+        path.join(os.homedir(), '/Documents/github/whisper.cpp/models/ggml-base.en.bin'),
         path.join(os.homedir(), 'whisper.cpp/models/ggml-base.bin'),
         '/opt/homebrew/share/whisper-cpp/ggml-base.en.bin',
         '/usr/local/share/whisper-cpp/ggml-base.en.bin',
         '/opt/homebrew/share/whisper-cpp/ggml-base.bin',
         '/usr/local/share/whisper-cpp/ggml-base.bin',
       ];
+      console.log(os.homedir())
       const model = modelCandidates.find(fs.existsSync);
       if (!model) {
         db.setStatus(projectId, 'error');
