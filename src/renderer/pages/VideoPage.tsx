@@ -30,28 +30,35 @@ const TitleBar = styled.div`
   gap: 12px;
 `;
 
-const BackBtn = styled.button`
+const AppName = styled.button`
   -webkit-app-region: no-drag;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: ${p => p.theme.textMuted};
-  padding: 4px 8px;
-  border-radius: ${p => p.theme.radiusSm};
-  transition: color 0.15s, background 0.15s;
+  font-size: 12px;
+  font-weight: 700;
+  color: ${p => p.theme.accent};
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  padding: 4px 2px;
+  transition: opacity 0.15s;
 
-  &:hover { color: ${p => p.theme.text}; background: ${p => p.theme.surfaceHover}; }
+  &:hover { opacity: 0.6; }
+`;
+
+const BreadcrumbSep = styled.span`
+  font-size: 14px;
+  color: ${p => p.theme.textDim};
+  flex-shrink: 0;
+  user-select: none;
 `;
 
 const TitleText = styled.span`
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   color: ${p => p.theme.textMuted};
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 300px;
+  max-width: 320px;
 `;
 
 const Body = styled.div`
@@ -388,7 +395,8 @@ export default function VideoPage() {
   return (
     <Shell>
       <TitleBar>
-        <BackBtn onClick={() => navigate('/')}>← Back</BackBtn>
+        <AppName onClick={() => navigate('/')}>Scribe</AppName>
+        <BreadcrumbSep>›</BreadcrumbSep>
         <TitleText>{project.name}</TitleText>
       </TitleBar>
 

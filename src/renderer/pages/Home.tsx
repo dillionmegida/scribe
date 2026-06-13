@@ -134,7 +134,7 @@ const Card = styled.div`
     border-color: ${p => p.theme.borderLight};
     background: ${p => p.theme.surfaceHover};
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(79,70,229,0.1), 0 2px 8px rgba(0,0,0,0.06);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.06);
   }
   &:hover .delete-btn,
   &:hover .rename-btn { opacity: 1; }
@@ -204,7 +204,7 @@ const StatusBadge = styled.div<{ $status: string }>`
   text-transform: uppercase;
 
   ${p => p.$status === 'done' && `
-    background: rgba(79,70,229,0.08);
+    background: ${p.theme.accentDim};
     color: ${p.theme.accent};
   `}
   ${p => p.$status === 'pending' && `
