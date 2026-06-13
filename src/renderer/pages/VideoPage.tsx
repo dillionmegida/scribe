@@ -25,6 +25,7 @@ const TitleBar = styled.div`
   align-items: center;
   padding: 0 20px 0 80px;
   border-bottom: 1px solid ${p => p.theme.border};
+  background: ${p => p.theme.surface};
   flex-shrink: 0;
   gap: 12px;
 `;
@@ -131,6 +132,7 @@ const CopyBtn = styled.button<{ $active?: boolean }>`
   &:hover {
     border-color: ${p => p.theme.accent};
     color: ${p => p.$active ? p.theme.accentText : p.theme.accent};
+    background: ${p => p.$active ? p.theme.accent : p.theme.accentDim};
   }
 `;
 
@@ -225,9 +227,9 @@ const CopiedToast = styled.div<{ $visible: boolean }>`
   left: 50%;
   transform: translateX(-50%) translateY(${p => p.$visible ? '0' : '8px'});
   opacity: ${p => p.$visible ? 1 : 0};
-  background: ${p => p.theme.surface};
-  border: 1px solid ${p => p.theme.border};
-  color: ${p => p.theme.text};
+  background: ${p => p.theme.text};
+  border: 1px solid transparent;
+  color: ${p => p.theme.surface};
   padding: 8px 18px;
   border-radius: 20px;
   font-size: 12px;
@@ -235,6 +237,55 @@ const CopiedToast = styled.div<{ $visible: boolean }>`
   transition: all 0.2s;
   pointer-events: none;
   z-index: 100;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+`;
+
+const ProgressPercent = styled.div`
+  font-size: 26px;
+  font-weight: 700;
+  color: ${p => p.theme.accent};
+`;
+
+const ProgressMsg = styled.span`
+  text-align: center;
+  max-width: 320px;
+  color: ${p => p.theme.text};
+  font-size: 13px;
+`;
+
+const ProgressBar = styled.div<{ $percent: number }>`
+  width: 200px;
+  height: 4px;
+  background: ${p => p.theme.border};
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    width: ${p => p.$percent}%;
+    background: ${p => p.theme.accent};
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+`;
+
+const EmptyIcon = styled.div`
+  font-size: 32px;
+  margin-bottom: 4px;
+`;
+
+const EmptyTitle = styled.strong`
+  font-size: 15px;
+  color: ${p => p.theme.text};
+`;
+
+const EmptySubtitle = styled.span`
+  font-size: 13px;
+  margin-bottom: 12px;
+  color: ${p => p.theme.textMuted};
 `;
 
 // ── Utils ─────────────────────────────────────────────────────────────────────
@@ -382,21 +433,18 @@ export default function VideoPage() {
             <Center>
               <Spinner />
               {progressPercent !== null && (
-                <div style={{ fontSize: 26, fontWeight: 700, color: '#c8f060' }}>
-                  {progressPercent}%
-                </div>
+                <ProgressBar $percent={progressPercent} />
               )}
-              <span style={{ textAlign: 'center', maxWidth: 320, color: '#d0d0d0' }}>
-                {progressMsg || 'Working…'}
-              </span>
+              {progressPercent !== null && (
+                <ProgressPercent>{progressPercent}%</ProgressPercent>
+              )}
+              <ProgressMsg>{progressMsg || 'Working…'}</ProgressMsg>
             </Center>
           ) : (
             <Center>
-              <div style={{ fontSize: 32, marginBottom: 4 }}>🎙</div>
-              <strong style={{ fontSize: 15 }}>No transcription yet</strong>
-              <span style={{ fontSize: 13, marginBottom: 12 }}>
-                Uses whisper — runs locally, fully private
-              </span>
+              <EmptyIcon>🎙</EmptyIcon>
+              <EmptyTitle>No transcription yet</EmptyTitle>
+              <EmptySubtitle>Uses whisper — runs locally, fully private</EmptySubtitle>
               {error && <ErrorMsg>{error}</ErrorMsg>}
               <TranscribeBtn onClick={handleTranscribe} disabled={transcribing}>
                 Transcribe Video

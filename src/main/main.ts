@@ -230,16 +230,41 @@ ipcMain.handle('transcribe', async (event, projectId: string) => {
         path.join(__dirname, '../../../whisper-cpp/models/ggml-base.en.bin'),
         path.join(__dirname, '../../../whisper-models/ggml-base.bin'),
         path.join(os.homedir(), 'whisper.cpp/models/ggml-base.en.bin'),
-        path.join(os.homedir(), '../whisper.cpp/models/ggml-base.en.bin'),
-        path.join(os.homedir(), '/Documents/github/whisper.cpp/models/ggml-base.en.bin'),
         path.join(os.homedir(), 'whisper.cpp/models/ggml-base.bin'),
+        path.join(os.homedir(), 'Documents/github/whisper.cpp/models/ggml-base.en.bin'),
+        path.join(os.homedir(), 'Documents/github/whisper.cpp/models/ggml-base.bin'),
+        path.join(os.homedir(), 'Desktop/github/whisper.cpp/models/ggml-base.en.bin'),
+        path.join(os.homedir(), 'Desktop/github/whisper.cpp/models/ggml-base.bin'),
+        path.join(os.homedir(), 'Desktop/github/whisper-models/ggml-base.en.bin'),
+        path.join(os.homedir(), 'Desktop/github/whisper-models/ggml-base.bin'),
+        path.join(os.homedir(), '.cache/whisper/ggml-base.en.bin'),
+        path.join(os.homedir(), '.cache/whisper/ggml-base.bin'),
+        '/opt/homebrew/share/whisper-cpp/models/ggml-base.en.bin',
+        '/opt/homebrew/share/whisper-cpp/models/ggml-base.bin',
         '/opt/homebrew/share/whisper-cpp/ggml-base.en.bin',
-        '/usr/local/share/whisper-cpp/ggml-base.en.bin',
         '/opt/homebrew/share/whisper-cpp/ggml-base.bin',
+        '/usr/local/share/whisper-cpp/models/ggml-base.en.bin',
+        '/usr/local/share/whisper-cpp/models/ggml-base.bin',
+        '/usr/local/share/whisper-cpp/ggml-base.en.bin',
         '/usr/local/share/whisper-cpp/ggml-base.bin',
       ];
-      console.log(os.homedir())
-      const model = modelCandidates.find(fs.existsSync);
+      let model = modelCandidates.find(p => fs.existsSync(p)) ?? null;
+
+      if (!model) {
+        try {
+          const searchDirs = [
+            os.homedir(),
+            '/opt/homebrew/share',
+            '/usr/local/share',
+          ].join(' ');
+          const found = execSync(
+            `find ${searchDirs} -name "ggml-base*.bin" -maxdepth 8 2>/dev/null | head -1`,
+            { encoding: 'utf-8', timeout: 8000 }
+          ).trim();
+          if (found && fs.existsSync(found)) model = found;
+        } catch {}
+      }
+
       if (!model) {
         db.setStatus(projectId, 'error');
         throw new Error(

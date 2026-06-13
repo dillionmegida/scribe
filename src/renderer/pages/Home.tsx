@@ -19,14 +19,15 @@ const TitleBar = styled.div`
   align-items: center;
   padding: 0 20px 0 80px;
   border-bottom: 1px solid ${p => p.theme.border};
+  background: ${p => p.theme.surface};
   flex-shrink: 0;
 `;
 
 const AppName = styled.span`
   font-size: 13px;
-  font-weight: 600;
-  color: ${p => p.theme.textMuted};
-  letter-spacing: 0.04em;
+  font-weight: 700;
+  color: ${p => p.theme.accent};
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 `;
 
@@ -90,18 +91,20 @@ const EmptyState = styled.div`
   align-items: center;
   justify-content: center;
   gap: 12px;
-  min-height: 300px;
+  min-height: 320px;
   color: ${p => p.theme.textMuted};
   font-size: 14px;
   animation: ${fadeIn} 0.4s ease;
+  border: 2px dashed ${p => p.theme.border};
+  border-radius: ${p => p.theme.radius};
 `;
 
 const EmptyIcon = styled.div`
   width: 64px;
   height: 64px;
   border-radius: 16px;
-  background: ${p => p.theme.surface};
-  border: 1px solid ${p => p.theme.border};
+  background: ${p => p.theme.accentDim};
+  border: 1px solid ${p => p.theme.borderLight};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -122,14 +125,16 @@ const Card = styled.div`
   border-radius: ${p => p.theme.radius};
   padding: 20px;
   cursor: pointer;
-  transition: border-color 0.15s, transform 0.15s, background 0.15s;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s, background 0.2s;
   position: relative;
   overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
 
   &:hover {
     border-color: ${p => p.theme.borderLight};
     background: ${p => p.theme.surfaceHover};
     transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(79,70,229,0.1), 0 2px 8px rgba(0,0,0,0.06);
   }
   &:hover .delete-btn,
   &:hover .rename-btn { opacity: 1; }
@@ -150,14 +155,15 @@ const RenameInput = styled.input`
   font-size: 15px;
   font-weight: 600;
   color: ${p => p.theme.text};
-  background: ${p => p.theme.bg};
-  border: 1px solid ${p => p.theme.accent};
-  border-radius: 4px;
-  padding: 2px 6px;
+  background: ${p => p.theme.surface};
+  border: 1.5px solid ${p => p.theme.accent};
+  border-radius: 6px;
+  padding: 3px 8px;
   margin-bottom: 6px;
   width: calc(100% - 28px);
   outline: none;
   font-family: inherit;
+  box-shadow: 0 0 0 3px ${p => p.theme.accentDim};
 `;
 
 const RenameBtn = styled.button`
@@ -176,7 +182,7 @@ const RenameBtn = styled.button`
   font-size: 13px;
   line-height: 1;
 
-  &:hover { background: ${p => p.theme.accent}25; color: ${p => p.theme.accent}; }
+  &:hover { background: ${p => p.theme.accentDim}; color: ${p => p.theme.accent}; }
 `;
 
 const CardMeta = styled.div`
@@ -198,19 +204,19 @@ const StatusBadge = styled.div<{ $status: string }>`
   text-transform: uppercase;
 
   ${p => p.$status === 'done' && `
-    background: rgba(200,240,96,0.12);
+    background: rgba(79,70,229,0.08);
     color: ${p.theme.accent};
   `}
   ${p => p.$status === 'pending' && `
-    background: rgba(255,255,255,0.05);
+    background: rgba(107,114,128,0.08);
     color: ${p.theme.textMuted};
   `}
   ${p => p.$status === 'transcribing' && `
-    background: rgba(255,200,80,0.1);
-    color: #ffc850;
+    background: rgba(245,158,11,0.1);
+    color: #D97706;
   `}
   ${p => p.$status === 'error' && `
-    background: rgba(255,95,95,0.1);
+    background: rgba(239,68,68,0.08);
     color: ${p.theme.red};
   `}
 `;
@@ -244,7 +250,7 @@ const DeleteBtn = styled.button`
   font-size: 14px;
   line-height: 1;
 
-  &:hover { background: rgba(255,95,95,0.15); color: ${p => p.theme.red}; }
+  &:hover { background: rgba(239,68,68,0.1); color: ${p => p.theme.red}; }
 `;
 
 const statusLabel: Record<string, string> = {

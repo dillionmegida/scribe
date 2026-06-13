@@ -1,20 +1,20 @@
 import { createGlobalStyle, DefaultTheme } from 'styled-components';
 
 export const theme: DefaultTheme = {
-  bg: '#0d0d0d',
-  surface: '#161616',
-  surfaceHover: '#1e1e1e',
-  border: '#252525',
-  borderLight: '#2e2e2e',
-  text: '#e8e8e8',
-  textMuted: '#666',
-  textDim: '#444',
-  accent: '#c8f060',
-  accentDim: 'rgba(200, 240, 96, 0.12)',
-  accentText: '#0d0d0d',
-  red: '#ff5f5f',
-  radius: '10px',
-  radiusSm: '6px',
+  bg: '#F8F9FA',
+  surface: '#FFFFFF',
+  surfaceHover: '#F5F6FF',
+  border: '#E5E7EB',
+  borderLight: '#C7D2FE',
+  text: '#111827',
+  textMuted: '#6B7280',
+  textDim: '#9CA3AF',
+  accent: '#4F46E5',
+  accentDim: 'rgba(79, 70, 229, 0.08)',
+  accentText: '#FFFFFF',
+  red: '#EF4444',
+  radius: '12px',
+  radiusSm: '8px',
 };
 
 export const GlobalStyles = createGlobalStyle`
@@ -33,10 +33,10 @@ export const GlobalStyles = createGlobalStyle`
     user-select: none;
   }
 
-  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
-  ::-webkit-scrollbar-thumb:hover { background: #3a3a3a; }
+  ::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
 
   button { cursor: pointer; border: none; background: none; font-family: inherit; }
   input { font-family: inherit; }
