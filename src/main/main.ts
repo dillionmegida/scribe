@@ -20,6 +20,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: false, // required for File.path on drag-and-drop in dev mode
       webSecurity: false, // allow file:// video src
     },
   });
@@ -33,7 +34,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   createWindow();
-  // mainWindow?.webContents.openDevTools();
+  mainWindow?.webContents.openDevTools();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -47,6 +48,7 @@ app.on('window-all-closed', () => {
 
 ipcMain.handle('get-projects', () => db.getProjects());
 ipcMain.handle('get-project', (_e, id: string) => db.getProject(id));
+ipcMain.handle('rename-project', (_e, id: string, name: string) => { db.renameProject(id, name); return true; });
 ipcMain.handle('delete-project', (_e, id: string) => { db.deleteProject(id); return true; });
 
 // ── Import video ──────────────────────────────────────────────────────────────
@@ -61,6 +63,21 @@ ipcMain.handle('import-video', async () => {
   const filePath = result.filePaths[0];
   const name = path.basename(filePath, path.extname(filePath));
   return db.createProject(name, filePath);
+});
+
+ipcMain.handle('import-video-path', async (_e, filePath: string) => {
+  const name = path.basename(filePath, path.extname(filePath));
+  return db.createProject(name, filePath);
+});
+
+ipcMain.handle('import-video-buffer', async (_e, name: string, buffer: ArrayBuffer) => {
+  const videosDir = path.join(app.getPath('userData'), 'videos');
+  if (!fs.existsSync(videosDir)) fs.mkdirSync(videosDir, { recursive: true });
+  const ext = path.extname(name);
+  const baseName = path.basename(name, ext);
+  const destPath = path.join(videosDir, name);
+  fs.writeFileSync(destPath, Buffer.from(buffer));
+  return db.createProject(baseName, destPath);
 });
 
 // ── Transcribe ────────────────────────────────────────────────────────────────

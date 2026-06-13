@@ -82,6 +82,11 @@ export default class Database {
     if (p) { p.status = status; this.save(); }
   }
 
+  renameProject(id: string, name: string) {
+    const p = this.data.projects.find(x => x.id === id);
+    if (p) { p.name = name; this.save(); }
+  }
+
   deleteProject(id: string) {
     this.data.projects = this.data.projects.filter(p => p.id !== id);
     this.save();

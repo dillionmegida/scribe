@@ -1,6 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from 'styled-components';
 import { theme, GlobalStyles } from './styles/theme';
 import Home from '../renderer/pages/Home';

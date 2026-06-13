@@ -30,10 +30,24 @@ const AppName = styled.span`
   text-transform: uppercase;
 `;
 
-const Content = styled.div`
+const Content = styled.div<{ $isDragging?: boolean }>`
   flex: 1;
   overflow-y: auto;
   padding: 32px 40px;
+  position: relative;
+  
+  ${p => p.$isDragging && `
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: ${p.theme.accent}15;
+      border: 2px dashed ${p.theme.accent};
+      border-radius: ${p.theme.radius};
+      pointer-events: none;
+      z-index: 10;
+    }
+  `}
 `;
 
 const Header = styled.div`
@@ -53,8 +67,10 @@ const Title = styled.h1`
 const ImportBtn = styled.button`
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 9px 18px;
+  min-width: 140px;
   background: ${p => p.theme.accent};
   color: ${p => p.theme.accentText};
   border-radius: ${p => p.theme.radiusSm};
@@ -115,7 +131,8 @@ const Card = styled.div`
     background: ${p => p.theme.surfaceHover};
     transform: translateY(-2px);
   }
-  &:hover .delete-btn { opacity: 1; }
+  &:hover .delete-btn,
+  &:hover .rename-btn { opacity: 1; }
 `;
 
 const CardName = styled.div`
@@ -127,6 +144,39 @@ const CardName = styled.div`
   overflow: hidden;
   text-overflow: ellipsis;
   padding-right: 28px;
+`;
+
+const RenameInput = styled.input`
+  font-size: 15px;
+  font-weight: 600;
+  color: ${p => p.theme.text};
+  background: ${p => p.theme.bg};
+  border: 1px solid ${p => p.theme.accent};
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-bottom: 6px;
+  width: calc(100% - 28px);
+  outline: none;
+  font-family: inherit;
+`;
+
+const RenameBtn = styled.button`
+  position: absolute;
+  top: 14px;
+  right: 42px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+  color: ${p => p.theme.textMuted};
+  font-size: 13px;
+  line-height: 1;
+
+  &:hover { background: ${p => p.theme.accent}25; color: ${p => p.theme.accent}; }
 `;
 
 const CardMeta = styled.div`
@@ -211,6 +261,10 @@ function formatDate(ts: number) {
 export default function Home() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCounter = React.useRef(0);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
   const navigate = useNavigate();
 
   const load = useCallback(async () => {
@@ -239,16 +293,88 @@ export default function Home() {
     setProjects(prev => prev.filter(p => p.id !== id));
   }
 
+  function handleRenameStart(e: React.MouseEvent, id: string, currentName: string) {
+    e.stopPropagation();
+    setRenamingId(id);
+    setRenameValue(currentName);
+  }
+
+  async function handleRenameSubmit(e: React.FormEvent, id: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (renameValue.trim()) {
+      await window.api.renameProject(id, renameValue.trim());
+      setProjects(prev => prev.map(p => p.id === id ? { ...p, name: renameValue.trim() } : p));
+    }
+    setRenamingId(null);
+  }
+
+  function handleRenameCancel() {
+    setRenamingId(null);
+    setRenameValue('');
+  }
+
+  function handleDragEnter(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current += 1;
+    if (dragCounter.current === 1) setIsDragging(true);
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current -= 1;
+    if (dragCounter.current === 0) setIsDragging(false);
+  }
+
+  async function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current = 0;
+    setIsDragging(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    const videoFile = files.find(f => /\.(mp4|mov|mkv|avi|webm|m4v)$/i.test(f.name));
+
+    if (!videoFile) return;
+
+    const filePath = window.api.getPathForFile(videoFile);
+    if (!filePath) return;
+
+    setLoading(true);
+    try {
+      const p = await window.api.importVideoPath(filePath);
+      if (p) {
+        setProjects(prev => [p, ...prev]);
+        navigate(`/video/${p.id}`);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <Shell>
       <TitleBar>
         <AppName>Scribe</AppName>
       </TitleBar>
-      <Content>
+      <Content
+        $isDragging={isDragging}
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         <Header>
           <Title>Projects</Title>
           <ImportBtn onClick={handleImport} disabled={loading}>
-            {loading ? '…' : '+ Import Video'}
+            {loading ? 'Importing...' : '+ Import Video'}
           </ImportBtn>
         </Header>
 
@@ -262,12 +388,31 @@ export default function Home() {
           <Grid>
             {projects.map(p => (
               <Card key={p.id} onClick={() => navigate(`/video/${p.id}`)}>
-                <CardName>{p.name}</CardName>
+                {renamingId === p.id ? (
+                  <form onSubmit={e => handleRenameSubmit(e, p.id)} onClick={e => e.stopPropagation()}>
+                    <RenameInput
+                      autoFocus
+                      value={renameValue}
+                      onChange={e => setRenameValue(e.target.value)}
+                      onBlur={handleRenameCancel}
+                      onKeyDown={e => e.key === 'Escape' && handleRenameCancel()}
+                    />
+                  </form>
+                ) : (
+                  <CardName>{p.name}</CardName>
+                )}
                 <CardMeta>{formatDate(p.created_at)}</CardMeta>
                 <StatusBadge $status={p.status}>
                   <Dot $status={p.status} />
                   {statusLabel[p.status]}
                 </StatusBadge>
+                <RenameBtn
+                  className="rename-btn"
+                  onClick={e => handleRenameStart(e, p.id, p.name)}
+                  title="Rename project"
+                >
+                  ✎
+                </RenameBtn>
                 <DeleteBtn
                   className="delete-btn"
                   onClick={e => handleDelete(e, p.id)}
