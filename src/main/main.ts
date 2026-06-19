@@ -54,6 +54,51 @@ ipcMain.handle('delete-project', (_e, id: string) => { db.deleteProject(id); ret
 
 // ── Import video ──────────────────────────────────────────────────────────────
 
+async function extractVideoMeta(filePath: string): Promise<{ aspectRatio: string; thumbnail: string | null }> {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scribe-meta-'));
+  const thumbPath = path.join(tmpDir, 'thumb.jpg');
+  let aspectRatio = '16/9';
+  let thumbnail: string | null = null;
+
+  try {
+    // Probe for dimensions
+    const probeOut = await new Promise<string>((resolve, reject) => {
+      const proc = spawn('ffprobe', [
+        '-v', 'error',
+        '-select_streams', 'v:0',
+        '-show_entries', 'stream=width,height',
+        '-of', 'csv=p=0',
+        filePath,
+      ]);
+      let out = '';
+      proc.stdout.on('data', d => { out += d.toString(); });
+      proc.on('close', code => code === 0 ? resolve(out.trim()) : reject());
+    });
+    const [w, h] = probeOut.split(',').map(Number);
+    if (w && h) aspectRatio = `${w}/${h}`;
+  } catch {}
+
+  try {
+    // Extract thumbnail
+    await new Promise<void>((resolve, reject) => {
+      const proc = spawn('ffmpeg', [
+        '-i', filePath,
+        '-ss', '00:00:02',
+        '-vframes', '1',
+        '-vf', 'scale=320:-1',
+        '-q:v', '5',
+        '-y', thumbPath,
+      ]);
+      proc.on('close', code => code === 0 ? resolve() : reject());
+    });
+    const data = fs.readFileSync(thumbPath);
+    thumbnail = 'data:image/jpeg;base64,' + data.toString('base64');
+  } catch {}
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+  return { aspectRatio, thumbnail };
+}
+
 ipcMain.handle('import-video', async () => {
   const result = await dialog.showOpenDialog(mainWindow!, {
     title: 'Select a video file',
@@ -63,12 +108,14 @@ ipcMain.handle('import-video', async () => {
   if (result.canceled || !result.filePaths.length) return null;
   const filePath = result.filePaths[0];
   const name = path.basename(filePath, path.extname(filePath));
-  return db.createProject(name, filePath);
+  const { aspectRatio, thumbnail } = await extractVideoMeta(filePath);
+  return db.createProject(name, filePath, aspectRatio, thumbnail ?? undefined);
 });
 
 ipcMain.handle('import-video-path', async (_e, filePath: string) => {
   const name = path.basename(filePath, path.extname(filePath));
-  return db.createProject(name, filePath);
+  const { aspectRatio, thumbnail } = await extractVideoMeta(filePath);
+  return db.createProject(name, filePath, aspectRatio, thumbnail ?? undefined);
 });
 
 ipcMain.handle('import-video-buffer', async (_e, name: string, buffer: ArrayBuffer) => {
@@ -78,7 +125,16 @@ ipcMain.handle('import-video-buffer', async (_e, name: string, buffer: ArrayBuff
   const baseName = path.basename(name, ext);
   const destPath = path.join(videosDir, name);
   fs.writeFileSync(destPath, Buffer.from(buffer));
-  return db.createProject(baseName, destPath);
+  const { aspectRatio, thumbnail } = await extractVideoMeta(destPath);
+  return db.createProject(baseName, destPath, aspectRatio, thumbnail ?? undefined);
+});
+
+ipcMain.handle('set-video-meta', async (_e, id: string) => {
+  const project = db.getProject(id);
+  if (!project) return false;
+  const { aspectRatio, thumbnail } = await extractVideoMeta(project.file_path);
+  db.setVideoMeta(id, aspectRatio, thumbnail);
+  return db.getProject(id);
 });
 
 // ── Transcribe ────────────────────────────────────────────────────────────────
@@ -325,8 +381,44 @@ ipcMain.handle('transcribe', async (event, projectId: string) => {
   }
 });
 
+// ── Save transcription edits ─────────────────────────────────────────────────
+
+ipcMain.handle('save-transcription', (_e, id: string, segments: Array<{ start: number; end: number; text: string }>) => {
+  db.saveTranscription(id, segments);
+  return true;
+});
+
 // ── Misc ──────────────────────────────────────────────────────────────────────
 
 ipcMain.handle('show-in-finder', (_e, filePath: string) => {
   shell.showItemInFolder(filePath);
+});
+
+ipcMain.handle('check-file-exists', (_e, filePath: string) => {
+  return fs.existsSync(filePath);
+});
+
+ipcMain.handle('get-video-thumbnail', async (_e, filePath: string) => {
+  if (!fs.existsSync(filePath)) return null;
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scribe-thumb-'));
+  const thumbPath = path.join(tmpDir, 'thumb.jpg');
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const proc = spawn('ffmpeg', [
+        '-i', filePath,
+        '-ss', '00:00:02',
+        '-vframes', '1',
+        '-vf', 'scale=320:-1',
+        '-q:v', '5',
+        '-y', thumbPath,
+      ]);
+      proc.on('close', code => code === 0 ? resolve() : reject());
+    });
+    const data = fs.readFileSync(thumbPath);
+    return 'data:image/jpeg;base64,' + data.toString('base64');
+  } catch {
+    return null;
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
 });

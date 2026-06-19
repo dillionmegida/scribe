@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import { Project } from '../../renderer/types';
@@ -253,6 +253,99 @@ const DeleteBtn = styled.button`
   &:hover { background: rgba(239,68,68,0.1); color: ${p => p.theme.red}; }
 `;
 
+const CardThumb = styled.div<{ $src?: string }>`
+  width: 100%;
+  height: 120px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  background: ${p => p.$src ? `url(${p.$src}) center/cover no-repeat` : p.theme.bg};
+  border: 1px solid ${p => p.theme.border};
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  color: ${p => p.theme.textDim};
+  flex-shrink: 0;
+`;
+
+const MissingBadge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: rgba(239,68,68,0.08);
+  color: ${p => p.theme.red};
+  margin-left: 6px;
+`;
+
+const ModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  backdrop-filter: blur(2px);
+`;
+
+const ModalBox = styled.div`
+  background: ${p => p.theme.surface};
+  border: 1px solid ${p => p.theme.border};
+  border-radius: ${p => p.theme.radius};
+  padding: 28px 32px;
+  width: 360px;
+  box-shadow: 0 24px 48px rgba(0,0,0,0.4);
+`;
+
+const ModalTitle = styled.div`
+  font-size: 16px;
+  font-weight: 600;
+  color: ${p => p.theme.text};
+  margin-bottom: 8px;
+`;
+
+const ModalBody = styled.div`
+  font-size: 13px;
+  color: ${p => p.theme.textMuted};
+  line-height: 1.55;
+  margin-bottom: 24px;
+`;
+
+const ModalActions = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+`;
+
+const ModalCancel = styled.button`
+  padding: 8px 18px;
+  border-radius: ${p => p.theme.radiusSm};
+  font-size: 13px;
+  font-weight: 500;
+  color: ${p => p.theme.textMuted};
+  border: 1px solid ${p => p.theme.border};
+  transition: background 0.15s;
+  &:hover { background: ${p => p.theme.accentDim}; }
+`;
+
+const ModalDelete = styled.button`
+  padding: 8px 18px;
+  border-radius: ${p => p.theme.radiusSm};
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(239,68,68,0.9);
+  color: #fff;
+  transition: opacity 0.15s;
+  &:hover { opacity: 0.85; }
+`;
+
 const statusLabel: Record<string, string> = {
   pending: 'Not transcribed',
   transcribing: 'Transcribing',
@@ -268,9 +361,11 @@ export default function Home() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const dragCounter = React.useRef(0);
+  const dragCounter = useRef(0);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [missingFiles, setMissingFiles] = useState<Record<string, boolean>>({});
   const navigate = useNavigate();
 
   const load = useCallback(async () => {
@@ -279,6 +374,18 @@ export default function Home() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!projects.length) return;
+    projects.forEach(async p => {
+      const exists = await window.api.checkFileExists(p.file_path);
+      setMissingFiles(prev => ({ ...prev, [p.id]: !exists }));
+      if (exists && !p.thumbnail) {
+        const updated = await window.api.setVideoMeta(p.id);
+        if (updated) setProjects(prev => prev.map(x => x.id === p.id ? updated as typeof x : x));
+      }
+    });
+  }, [projects.map(p => p.id).join(',')]);
 
   async function handleImport() {
     setLoading(true);
@@ -293,10 +400,16 @@ export default function Home() {
     }
   }
 
-  async function handleDelete(e: React.MouseEvent, id: string) {
+  function handleDeleteClick(e: React.MouseEvent, id: string) {
     e.stopPropagation();
-    await window.api.deleteProject(id);
-    setProjects(prev => prev.filter(p => p.id !== id));
+    setConfirmDeleteId(id);
+  }
+
+  async function handleDeleteConfirm() {
+    if (!confirmDeleteId) return;
+    await window.api.deleteProject(confirmDeleteId);
+    setProjects(prev => prev.filter(p => p.id !== confirmDeleteId));
+    setConfirmDeleteId(null);
   }
 
   function handleRenameStart(e: React.MouseEvent, id: string, currentName: string) {
@@ -346,7 +459,7 @@ export default function Home() {
     setIsDragging(false);
 
     const files = Array.from(e.dataTransfer.files);
-    const videoFile = files.find(f => /\.(mp4|mov|mkv|avi|webm|m4v)$/i.test(f.name));
+    const videoFile = files.find((f: File) => /\.(mp4|mov|mkv|avi|webm|m4v)$/i.test(f.name));
 
     if (!videoFile) return;
 
@@ -364,6 +477,8 @@ export default function Home() {
       setLoading(false);
     }
   }
+
+  const confirmProject = projects.find(p => p.id === confirmDeleteId);
 
   return (
     <Shell>
@@ -394,6 +509,9 @@ export default function Home() {
           <Grid>
             {projects.map(p => (
               <Card key={p.id} onClick={() => navigate(`/video/${p.id}`)}>
+                <CardThumb $src={p.thumbnail}>
+                  {!p.thumbnail && '🎬'}
+                </CardThumb>
                 {renamingId === p.id ? (
                   <form onSubmit={e => handleRenameSubmit(e, p.id)} onClick={e => e.stopPropagation()}>
                     <RenameInput
@@ -408,10 +526,15 @@ export default function Home() {
                   <CardName>{p.name}</CardName>
                 )}
                 <CardMeta>{formatDate(p.created_at)}</CardMeta>
-                <StatusBadge $status={p.status}>
-                  <Dot $status={p.status} />
-                  {statusLabel[p.status]}
-                </StatusBadge>
+                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+                  <StatusBadge $status={p.status}>
+                    <Dot $status={p.status} />
+                    {statusLabel[p.status]}
+                  </StatusBadge>
+                  {missingFiles[p.id] && (
+                    <MissingBadge title={p.file_path}>⚠ File missing</MissingBadge>
+                  )}
+                </div>
                 <RenameBtn
                   className="rename-btn"
                   onClick={e => handleRenameStart(e, p.id, p.name)}
@@ -421,7 +544,7 @@ export default function Home() {
                 </RenameBtn>
                 <DeleteBtn
                   className="delete-btn"
-                  onClick={e => handleDelete(e, p.id)}
+                  onClick={e => handleDeleteClick(e, p.id)}
                   title="Delete project"
                 >
                   ✕
@@ -431,6 +554,21 @@ export default function Home() {
           </Grid>
         )}
       </Content>
+
+      {confirmDeleteId && (
+        <ModalOverlay onClick={() => setConfirmDeleteId(null)}>
+          <ModalBox onClick={e => e.stopPropagation()}>
+            <ModalTitle>Delete project?</ModalTitle>
+            <ModalBody>
+              "{confirmProject?.name}" will be permanently removed. The original video file will not be deleted.
+            </ModalBody>
+            <ModalActions>
+              <ModalCancel onClick={() => setConfirmDeleteId(null)}>Cancel</ModalCancel>
+              <ModalDelete onClick={handleDeleteConfirm}>Delete</ModalDelete>
+            </ModalActions>
+          </ModalBox>
+        </ModalOverlay>
+      )}
     </Shell>
   );
 }

@@ -82,15 +82,18 @@ const VideoWrap = styled.div`
   flex: 1;
   background: #000;
   display: flex;
-  /* align-items: center; */
+  align-items: center;
   justify-content: center;
   overflow: hidden;
+  min-height: 0;
 `;
 
-const Video = styled.video`
-  max-width: 100%;
-  max-height: 100%;
+const Video = styled.video<{ $ratio?: string }>`
   display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  ${p => p.$ratio && `aspect-ratio: ${p.$ratio};`}
 `;
 
 // ── Right: Transcription ──────────────────────────────────────────────────────
@@ -176,6 +179,67 @@ const SegText = styled.span`
   line-height: 1.65;
   color: ${p => p.theme.text};
   user-select: text;
+`;
+
+const SegEditInput = styled.textarea`
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: ${p => p.theme.text};
+  background: ${p => p.theme.accentDim};
+  border: 1.5px solid ${p => p.theme.accent};
+  border-radius: 6px;
+  padding: 3px 7px;
+  width: 100%;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+  overflow: hidden;
+  box-shadow: 0 0 0 3px ${p => p.theme.accentDim};
+`;
+
+const SearchBar = styled.div`
+  padding: 10px 20px;
+  border-bottom: 1px solid ${p => p.theme.border};
+  flex-shrink: 0;
+`;
+
+const SearchInput = styled.input`
+  width: 100%;
+  padding: 7px 12px;
+  border-radius: ${p => p.theme.radiusSm};
+  border: 1px solid ${p => p.theme.border};
+  background: ${p => p.theme.bg};
+  color: ${p => p.theme.text};
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s;
+
+  &:focus { border-color: ${p => p.theme.accent}; }
+  &::placeholder { color: ${p => p.theme.textDim}; }
+`;
+
+const SearchCount = styled.span`
+  font-size: 11px;
+  color: ${p => p.theme.textDim};
+  margin-left: 8px;
+`;
+
+const HighlightedText = styled.mark`
+  background: rgba(255, 200, 0, 0.35);
+  color: inherit;
+  border-radius: 2px;
+`;
+
+const MissingFileBanner = styled.div`
+  background: rgba(239,68,68,0.08);
+  border-bottom: 1px solid rgba(239,68,68,0.2);
+  color: ${p => p.theme.red};
+  font-size: 12px;
+  padding: 8px 20px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 `;
 
 // ── States ────────────────────────────────────────────────────────────────────
@@ -305,10 +369,25 @@ function formatTime(s: number) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+function highlightText(text: string, query: string) {
+  if (!query.trim()) return <>{text}</>;
+  const parts = text.split(new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.toLowerCase() === query.toLowerCase()
+          ? <HighlightedText key={i}>{part}</HighlightedText>
+          : part
+      )}
+    </>
+  );
+}
+
 export default function VideoPage() {
   const { videoId } = useParams<{ videoId: string }>();
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const activeSegRef = useRef<HTMLDivElement>(null);
 
   const [project, setProject] = useState<Project | null>(null);
   const [transcribing, setTranscribing] = useState(false);
@@ -318,9 +397,23 @@ export default function VideoPage() {
   const [currentTime, setCurrentTime] = useState(0);
   const [toast, setToast] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [fileMissing, setFileMissing] = useState(false);
+  const isPaused = useRef(true);
 
   useEffect(() => {
-    window.api.getProject(videoId!).then(p => { if (p) setProject(p); });
+    window.api.getProject(videoId!).then(async p => {
+      if (!p) return;
+      setProject(p);
+      const exists = await window.api.checkFileExists(p.file_path);
+      setFileMissing(!exists);
+      if (exists && (!p.aspect_ratio || !p.thumbnail)) {
+        const updated = await window.api.setVideoMeta(p.id);
+        if (updated) setProject(updated as typeof p);
+      }
+    });
     const unsub = window.api.onTranscribeProgress(data => {
       if (data.projectId === videoId) {
         setProgressMsg(data.step);
@@ -340,6 +433,12 @@ export default function VideoPage() {
     }
     return -1;
   }
+
+  useEffect(() => {
+    if (activeSegRef.current) {
+      activeSegRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [currentTime]);
 
   async function handleTranscribe() {
     if (!project) return;
@@ -384,13 +483,39 @@ export default function VideoPage() {
   function seekTo(start: number) {
     if (videoRef.current) {
       videoRef.current.currentTime = start;
-      videoRef.current.play();
+      if (!isPaused.current) videoRef.current.play();
     }
+  }
+
+  function startEdit(e: React.MouseEvent, idx: number, text: string) {
+    e.stopPropagation();
+    setEditingIdx(idx);
+    setEditValue(text);
+  }
+
+  async function commitEdit(idx: number) {
+    if (!project?.transcription) return;
+    const updated = project.transcription.map((s, i) =>
+      i === idx ? { ...s, text: editValue.trim() || s.text } : s
+    );
+    await window.api.saveTranscription(project.id, updated);
+    setProject(prev => prev ? { ...prev, transcription: updated } : prev);
+    setEditingIdx(null);
+  }
+
+  function cancelEdit() {
+    setEditingIdx(null);
+    setEditValue('');
   }
 
   if (!project) return null;
 
-  const activeIdx = project.transcription ? activeSegmentIndex(project.transcription) : -1;
+  const segs = project.transcription ?? [];
+  const filteredSegs = searchQuery.trim()
+    ? segs.map((s, i) => ({ ...s, originalIdx: i })).filter(s => s.text.toLowerCase().includes(searchQuery.toLowerCase()))
+    : segs.map((s, i) => ({ ...s, originalIdx: i }));
+
+  const activeIdx = segs.length ? activeSegmentIndex(segs) : -1;
 
   return (
     <Shell>
@@ -403,12 +528,21 @@ export default function VideoPage() {
       <Body>
         {/* ── Video ── */}
         <VideoPane>
+          {fileMissing && (
+            <MissingFileBanner>
+              ⚠ Video file not found at original path — playback unavailable
+            </MissingFileBanner>
+          )}
           <VideoWrap>
             <Video
+              $ratio={project.aspect_ratio}
               ref={videoRef}
-              src={`file://${project.file_path}`}
+              src={fileMissing ? undefined : `file://${project.file_path}`}
+              poster={project.thumbnail}
               controls
               onTimeUpdate={handleTimeUpdate}
+              onPlay={() => { isPaused.current = false; }}
+              onPause={() => { isPaused.current = true; }}
             />
           </VideoWrap>
         </VideoPane>
@@ -424,17 +558,52 @@ export default function VideoPage() {
                   <CopyBtn onClick={copyWithTimestamps} $active>Copy with timestamps</CopyBtn>
                 </CopyGroup>
               </PaneHeader>
+              <SearchBar>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <SearchInput
+                    placeholder="Search transcript…"
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                  />
+                  {searchQuery.trim() && (
+                    <SearchCount>{filteredSegs.length} result{filteredSegs.length !== 1 ? 's' : ''}</SearchCount>
+                  )}
+                </div>
+              </SearchBar>
               <SegmentList>
-                {project.transcription.map((seg, i) => (
-                  <SegmentRow
-                    key={i}
-                    $active={i === activeIdx}
-                    onClick={() => seekTo(seg.start)}
-                  >
-                    <Timestamp>{formatTime(seg.start)}</Timestamp>
-                    <SegText>{seg.text}</SegText>
-                  </SegmentRow>
-                ))}
+                {filteredSegs.map(seg => {
+                  const i = seg.originalIdx;
+                  const isActive = i === activeIdx;
+                  const isEditing = editingIdx === i;
+                  return (
+                    <SegmentRow
+                      key={i}
+                      ref={isActive ? activeSegRef : null}
+                      $active={isActive}
+                      onClick={() => !isEditing && seekTo(seg.start)}
+                      onDoubleClick={e => !isEditing && startEdit(e, i, seg.text)}
+                      title="Double-click to edit"
+                    >
+                      <Timestamp>{formatTime(seg.start)}</Timestamp>
+                      {isEditing ? (
+                        <SegEditInput
+                          autoFocus
+                          value={editValue}
+                          rows={Math.max(1, Math.ceil(editValue.length / 40))}
+                          onChange={e => setEditValue(e.target.value)}
+                          onBlur={() => commitEdit(i)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitEdit(i); }
+                            if (e.key === 'Escape') cancelEdit();
+                          }}
+                          onClick={e => e.stopPropagation()}
+                        />
+                      ) : (
+                        <SegText>{highlightText(seg.text, searchQuery)}</SegText>
+                      )}
+                    </SegmentRow>
+                  );
+                })}
               </SegmentList>
             </>
           ) : transcribing ? (
@@ -454,7 +623,7 @@ export default function VideoPage() {
               <EmptyTitle>No transcription yet</EmptyTitle>
               <EmptySubtitle>Uses whisper — runs locally, fully private</EmptySubtitle>
               {error && <ErrorMsg>{error}</ErrorMsg>}
-              <TranscribeBtn onClick={handleTranscribe} disabled={transcribing}>
+              <TranscribeBtn onClick={handleTranscribe} disabled={transcribing || fileMissing}>
                 Transcribe Video
               </TranscribeBtn>
             </Center>

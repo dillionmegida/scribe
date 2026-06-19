@@ -16,6 +16,8 @@ export interface Project {
   created_at: number;
   transcription: Segment[] | null;
   status: 'pending' | 'transcribing' | 'done' | 'error';
+  aspect_ratio?: string;
+  thumbnail?: string;
 }
 
 interface DbData {
@@ -54,7 +56,7 @@ export default class Database {
     return this.data.projects.find(p => p.id === id) ?? null;
   }
 
-  createProject(name: string, filePath: string): Project {
+  createProject(name: string, filePath: string, aspectRatio?: string, thumbnail?: string): Project {
     const project: Project = {
       id: uuidv4(),
       name,
@@ -62,6 +64,8 @@ export default class Database {
       created_at: Date.now(),
       transcription: null,
       status: 'pending',
+      aspect_ratio: aspectRatio,
+      thumbnail,
     };
     this.data.projects.push(project);
     this.save();
@@ -85,6 +89,15 @@ export default class Database {
   renameProject(id: string, name: string) {
     const p = this.data.projects.find(x => x.id === id);
     if (p) { p.name = name; this.save(); }
+  }
+
+  setVideoMeta(id: string, aspectRatio: string, thumbnail: string | null) {
+    const p = this.data.projects.find(x => x.id === id);
+    if (p) {
+      p.aspect_ratio = aspectRatio;
+      if (thumbnail) p.thumbnail = thumbnail;
+      this.save();
+    }
   }
 
   deleteProject(id: string) {
