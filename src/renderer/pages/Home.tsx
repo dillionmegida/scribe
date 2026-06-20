@@ -38,15 +38,10 @@ const Content = styled.div<{ $isDragging?: boolean }>`
   position: relative;
   
   ${p => p.$isDragging && `
-    &::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: ${p.theme.accent}15;
-      border: 2px dashed ${p.theme.accent};
-      border-radius: ${p.theme.radius};
+    & > *:not([data-drop-overlay]) {
+      filter: blur(3px);
       pointer-events: none;
-      z-index: 10;
+      user-select: none;
     }
   `}
 `;
@@ -346,6 +341,39 @@ const ModalDelete = styled.button`
   &:hover { opacity: 0.85; }
 `;
 
+const dropFadeIn = keyframes`
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+`;
+
+const DropOverlay = styled.div`
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+  border: 2px dashed rgba(255,255,255,0.4);
+  border-radius: ${p => p.theme.radius};
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  animation: ${dropFadeIn} 0.18s ease;
+`;
+
+const DropLabel = styled.span`
+  font-size: 22px;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+`;
+
+const DropSub = styled.span`
+  font-size: 13px;
+  color: rgba(255,255,255,0.6);
+`;
+
 const statusLabel: Record<string, string> = {
   pending: 'Not transcribed',
   transcribing: 'Transcribing',
@@ -552,6 +580,16 @@ export default function Home() {
               </Card>
             ))}
           </Grid>
+        )}
+        {isDragging && (
+          <DropOverlay data-drop-overlay>
+            <svg width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M26 34V20M26 20L20 26M26 20L32 26" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M16 36H36" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeOpacity="0.6"/>
+            </svg>
+            <DropLabel>Drop your video here</DropLabel>
+            <DropSub>MP4, MOV, MKV, AVI, WEBM, M4V</DropSub>
+          </DropOverlay>
         )}
       </Content>
 
