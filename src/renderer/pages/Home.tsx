@@ -176,8 +176,12 @@ const RenameBtn = styled.button`
   color: ${p => p.theme.textMuted};
   font-size: 13px;
   line-height: 1;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(4px);
+  border: 1px solid ${p => p.theme.border};
 
-  &:hover { background: ${p => p.theme.accentDim}; color: ${p => p.theme.accent}; }
+  &:hover { background: rgba(255, 255, 255, 1); color: ${p => p.theme.accent}; border-color: ${p => p.theme.accent}; }
 `;
 
 const CardMeta = styled.div`
@@ -244,8 +248,12 @@ const DeleteBtn = styled.button`
   color: ${p => p.theme.textMuted};
   font-size: 14px;
   line-height: 1;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(4px);
+  border: 1px solid ${p => p.theme.border};
 
-  &:hover { background: rgba(239,68,68,0.1); color: ${p => p.theme.red}; }
+  &:hover { background: rgba(255, 255, 255, 1); color: ${p => p.theme.red}; border-color: ${p => p.theme.red}; }
 `;
 
 const CardThumb = styled.div<{ $src?: string }>`

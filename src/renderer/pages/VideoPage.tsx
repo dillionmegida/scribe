@@ -440,6 +440,24 @@ export default function VideoPage() {
     }
   }, [currentTime]);
 
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.code === 'Space' && e.target === document.body) {
+        e.preventDefault();
+        if (videoRef.current) {
+          if (videoRef.current.paused) {
+            videoRef.current.play();
+          } else {
+            videoRef.current.pause();
+          }
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   async function handleTranscribe() {
     if (!project) return;
     setTranscribing(true);
