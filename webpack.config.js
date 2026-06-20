@@ -29,6 +29,19 @@ module.exports = {
       filename: 'index.html',
     }),
   ],
-  target: 'electron-renderer',
+  target: 'web',
   devtool: 'source-map',
+  devServer: {
+    port: 3000,
+    hot: true,
+    static: {
+      directory: path.resolve(__dirname, 'src/renderer'),
+    },
+    devMiddleware: {
+      publicPath: '/',
+    },
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+    },
+  },
 };

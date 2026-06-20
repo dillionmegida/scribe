@@ -1,10 +1,10 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import { HashRouter, BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from 'styled-components';
 import { theme, GlobalStyles } from './styles/theme';
-import Home from '../renderer/pages/Home';
-import VideoPage from '../renderer/pages/VideoPage';
+import Home from './pages/Home';
+import VideoPage from './pages/VideoPage';
 
 function App() {
   return (

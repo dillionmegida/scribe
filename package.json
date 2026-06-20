@@ -8,7 +8,13 @@
     "build:renderer": "webpack --config webpack.config.js",
     "build": "npm run build:main && npm run build:renderer",
     "start": "npm run build && electron .",
-    "dev": "npm run build && concurrently --kill-others \"webpack --config webpack.config.js --watch\" \"electron .\""
+    "dev": "npm run build:main && concurrently --kill-others \"tsc -p tsconfig.json --watch\" \"webpack serve --config webpack.config.js\" \"wait-on http://localhost:3000 && NODE_ENV=development electronmon .\""
+  },
+  "electronmon": {
+    "patterns": [
+      "!src/**",
+      "!dist/renderer/**"
+    ]
   },
   "keywords": [],
   "author": "",
@@ -25,6 +31,7 @@
     "@types/uuid": "^10.0.0",
     "babel-loader": "^10.1.1",
     "concurrently": "^9.2.1",
+    "electronmon": "^2.0.4",
     "html-webpack-plugin": "^5.6.6",
     "ts-loader": "^9.5.7",
     "typescript": "^6.0.2",
