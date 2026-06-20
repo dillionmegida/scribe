@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f0d1a"/>
+      <stop offset="100%" stop-color="#080810"/>
+    </linearGradient>
+    <linearGradient id="pill" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#a78bfa"/>
+      <stop offset="100%" stop-color="#7c5cfc"/>
+    </linearGradient>
+    <linearGradient id="pillFade" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7c5cfc"/>
+      <stop offset="100%" stop-color="#5b3de8"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" rx="220" fill="url(#bg2)"/>
+
+  <!-- Large bold subtitle bars — fills the icon, very clear meaning -->
+  <!-- Line 1: long -->
+  <rect x="108" y="310" width="808" height="96" rx="48" fill="url(#pill)"/>
+  <!-- Line 2: medium, slightly dimmer -->
+  <rect x="108" y="448" width="600" height="96" rx="48" fill="url(#pillFade)" opacity="0.72"/>
+  <!-- Line 3: short, even dimmer — trailing off effect -->
+  <rect x="108" y="586" width="380" height="96" rx="48" fill="url(#pillFade)" opacity="0.42"/>
+
+  <!-- Tiny play caret top-right to hint "video" -->
+  <circle cx="850" cy="186" r="68" fill="rgba(124,92,252,0.18)" stroke="#7c5cfc" stroke-width="5"/>
+  <path d="M 836 158 L 882 186 L 836 214 Z" fill="#a78bfa"/>
+</svg>
