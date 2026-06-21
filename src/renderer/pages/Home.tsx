@@ -2,35 +2,9 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import { Project } from '../../renderer/types';
-import { getCachedProjects, setCachedProjects, setCachedThumbnail } from '../cache';
+import { getCachedProjects, getCachedThumbnails, setCachedProjects, setCachedThumbnail } from '../cache';
 
 const fadeIn = keyframes`from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); }`;
-
-const Shell = styled.div`
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  background: ${p => p.theme.bg};
-`;
-
-const TitleBar = styled.div`
-  height: 52px;
-  -webkit-app-region: drag;
-  display: flex;
-  align-items: center;
-  padding: 0 20px 0 80px;
-  border-bottom: 1px solid ${p => p.theme.border};
-  background: ${p => p.theme.surface};
-  flex-shrink: 0;
-`;
-
-const AppName = styled.span`
-  font-size: 13px;
-  font-weight: 700;
-  color: ${p => p.theme.accent};
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-`;
 
 const Content = styled.div<{ $isDragging?: boolean }>`
   flex: 1;
@@ -471,7 +445,8 @@ export default function Home() {
   useEffect(() => {
     // Always fetch fresh data (updates cache + state)
     window.api.getProjects().then(p => {
-      setProjects(p);
+      const thumbs = getCachedThumbnails();
+      setProjects(p.map(proj => ({ ...proj, thumbnail: thumbs[proj.id] || proj.thumbnail })));
       setCachedProjects(p);
       setInitialising(false);
     });
@@ -593,10 +568,7 @@ export default function Home() {
   const confirmProject = projects.find(p => p.id === confirmDeleteId);
 
   return (
-    <Shell>
-      <TitleBar>
-        <AppName>Scribe</AppName>
-      </TitleBar>
+    <>
       <Content
         $isDragging={isDragging}
         onDragEnter={handleDragEnter}
@@ -701,6 +673,6 @@ export default function Home() {
           </ModalBox>
         </ModalOverlay>
       )}
-    </Shell>
+    </>
   );
 }

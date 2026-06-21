@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import { Project, Segment } from '../../renderer/types';
+import { useTitleBar } from '../titleContext';
 
 // ── Animations ────────────────────────────────────────────────────────────────
 
@@ -9,40 +10,6 @@ const fadeIn = keyframes`from { opacity: 0; transform: translateY(6px); } to { o
 const spin = keyframes`to { transform: rotate(360deg); }`;
 
 // ── Layout ────────────────────────────────────────────────────────────────────
-
-const Shell = styled.div`
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  background: ${p => p.theme.bg};
-  animation: ${fadeIn} 0.25s ease;
-`;
-
-const TitleBar = styled.div`
-  height: 52px;
-  -webkit-app-region: drag;
-  display: flex;
-  align-items: center;
-  padding: 0 20px 0 80px;
-  border-bottom: 1px solid ${p => p.theme.border};
-  background: ${p => p.theme.surface};
-  flex-shrink: 0;
-  gap: 12px;
-`;
-
-const AppName = styled.button`
-  -webkit-app-region: no-drag;
-  font-size: 12px;
-  font-weight: 700;
-  color: ${p => p.theme.accent};
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  flex-shrink: 0;
-  padding: 4px 2px;
-  transition: opacity 0.15s;
-
-  &:hover { opacity: 0.6; }
-`;
 
 const BreadcrumbSep = styled.span`
   font-size: 14px;
@@ -65,6 +32,7 @@ const Body = styled.div`
   flex: 1;
   display: flex;
   overflow: hidden;
+  animation: ${fadeIn} 0.25s ease;
 `;
 
 // ── Left: Video ───────────────────────────────────────────────────────────────
@@ -348,6 +316,20 @@ const EmptyIcon = styled.div`
   margin-bottom: 4px;
 `;
 
+const shimmer = keyframes`
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+`;
+
+const SkeletonBlock = styled.div<{ $w?: string; $h?: string }>`
+  width: ${p => p.$w || '100%'};
+  height: ${p => p.$h || '16px'};
+  border-radius: 6px;
+  background: linear-gradient(90deg, #E5E7EB 0%, rgba(24,24,27,0.06) 50%, #E5E7EB 100%);
+  background-size: 800px 100%;
+  animation: ${shimmer} 1.5s infinite linear;
+`;
+
 const EmptyTitle = styled.strong`
   font-size: 15px;
   color: ${p => p.theme.text};
@@ -385,7 +367,7 @@ function highlightText(text: string, query: string) {
 
 export default function VideoPage() {
   const { videoId } = useParams<{ videoId: string }>();
-  const navigate = useNavigate();
+  const { setExtras } = useTitleBar();
   const videoRef = useRef<HTMLVideoElement>(null);
   const activeSegRef = useRef<HTMLDivElement>(null);
 
@@ -526,7 +508,32 @@ export default function VideoPage() {
     setEditValue('');
   }
 
-  if (!project) return null;
+  useEffect(() => {
+    if (!project) return;
+    setExtras(
+      <>
+        <BreadcrumbSep>›</BreadcrumbSep>
+        <TitleText>{project.name}</TitleText>
+      </>
+    );
+    return () => setExtras(null);
+  }, [project?.name]);
+
+  if (!project) return (
+    <Body>
+      <VideoPane>
+        <VideoWrap style={{ background: '#000' }} />
+      </VideoPane>
+      <TranscriptPane>
+        <PaneHeader>
+          <SkeletonBlock $w="100px" $h="12px" />
+        </PaneHeader>
+        <Center>
+          <Spinner />
+        </Center>
+      </TranscriptPane>
+    </Body>
+  );
 
   const segs = project.transcription ?? [];
   const filteredSegs = searchQuery.trim()
@@ -536,13 +543,7 @@ export default function VideoPage() {
   const activeIdx = segs.length ? activeSegmentIndex(segs) : -1;
 
   return (
-    <Shell>
-      <TitleBar>
-        <AppName onClick={() => navigate('/')}>Scribe</AppName>
-        <BreadcrumbSep>›</BreadcrumbSep>
-        <TitleText>{project.name}</TitleText>
-      </TitleBar>
-
+    <>
       <Body>
         {/* ── Video ── */}
         <VideoPane>
@@ -650,6 +651,6 @@ export default function VideoPage() {
       </Body>
 
       <CopiedToast $visible={toastVisible}>{toast}</CopiedToast>
-    </Shell>
+    </>
   );
 }
