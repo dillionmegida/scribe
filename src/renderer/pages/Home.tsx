@@ -4,6 +4,12 @@ import styled, { keyframes } from 'styled-components';
 import { Project } from '../../renderer/types';
 import { getCachedProjects, getCachedThumbnails, setCachedProjects, setCachedThumbnail } from '../cache';
 
+function toDisplayUrl(thumbnail?: string): string | undefined {
+  if (!thumbnail) return undefined;
+  if (thumbnail.startsWith('data:') || thumbnail.startsWith('file://') || thumbnail.startsWith('http')) return thumbnail;
+  return `file://${thumbnail}`;
+}
+
 const fadeIn = keyframes`from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); }`;
 
 const Content = styled.div<{ $isDragging?: boolean }>`
@@ -443,10 +449,8 @@ export default function Home() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Always fetch fresh data (updates cache + state)
     window.api.getProjects().then(p => {
-      const thumbs = getCachedThumbnails();
-      setProjects(p.map(proj => ({ ...proj, thumbnail: thumbs[proj.id] || proj.thumbnail })));
+      setProjects(p);
       setCachedProjects(p);
       setInitialising(false);
     });
@@ -466,8 +470,11 @@ export default function Home() {
         if (existsMap[p.file_path] && !p.thumbnail) {
           const updated = await window.api.setVideoMeta(p.id);
           if (updated) {
-            if ((updated as Project).thumbnail) setCachedThumbnail(p.id, (updated as Project).thumbnail!);
-            setProjects(prev => prev.map(x => x.id === p.id ? updated as typeof x : x));
+            setProjects(prev => {
+              const next = prev.map(x => x.id === p.id ? updated as typeof x : x);
+              setCachedProjects(next);
+              return next;
+            });
           }
         }
       }
@@ -603,7 +610,7 @@ export default function Home() {
           <Grid>
             {projects.map(p => (
               <Card key={p.id} onClick={() => navigate(`/video/${p.id}`)}>
-                <CardThumb $src={p.thumbnail}>
+                <CardThumb $src={toDisplayUrl(p.thumbnail)}>
                   {!p.thumbnail && '🎬'}
                 </CardThumb>
                 {renamingId === p.id ? (

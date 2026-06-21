@@ -4,6 +4,12 @@ import styled, { keyframes } from 'styled-components';
 import { Project, Segment } from '../../renderer/types';
 import { useTitleBar } from '../titleContext';
 
+function toDisplayUrl(thumbnail?: string): string | undefined {
+  if (!thumbnail) return undefined;
+  if (thumbnail.startsWith('data:') || thumbnail.startsWith('file://') || thumbnail.startsWith('http')) return thumbnail;
+  return `file://${thumbnail}`;
+}
+
 // ── Animations ────────────────────────────────────────────────────────────────
 
 const fadeIn = keyframes`from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); }`;
@@ -557,7 +563,7 @@ export default function VideoPage() {
               $ratio={project.aspect_ratio}
               ref={videoRef}
               src={fileMissing ? undefined : `file://${project.file_path}`}
-              poster={project.thumbnail}
+              poster={toDisplayUrl(project.thumbnail)}
               controls
               onTimeUpdate={handleTimeUpdate}
               onPlay={() => { isPaused.current = false; }}

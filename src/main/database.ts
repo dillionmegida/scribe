@@ -45,7 +45,9 @@ export default class Database {
   }
 
   private save() {
-    fs.writeFileSync(this.dbPath, JSON.stringify(this.data, null, 2));
+    const tmp = this.dbPath + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(this.data, null, 2));
+    fs.renameSync(tmp, this.dbPath);
   }
 
   getProjects(): Project[] {
@@ -54,19 +56,19 @@ export default class Database {
       .map(({ transcription, ...rest }) => ({ ...rest, transcription: null }));
   }
 
-  getProjectsLight(): Omit<Project, 'transcription' | 'thumbnail'>[] {
+  getProjectsLight(): Omit<Project, 'transcription'>[] {
     return [...this.data.projects]
       .sort((a, b) => b.created_at - a.created_at)
-      .map(({ transcription, thumbnail, ...rest }) => rest);
+      .map(({ transcription, ...rest }) => rest);
   }
 
   getProject(id: string): Project | null {
     return this.data.projects.find(p => p.id === id) ?? null;
   }
 
-  createProject(name: string, filePath: string, aspectRatio?: string, thumbnail?: string): Project {
+  createProject(name: string, filePath: string, aspectRatio?: string, thumbnail?: string, id?: string): Project {
     const project: Project = {
-      id: uuidv4(),
+      id: id ?? uuidv4(),
       name,
       file_path: filePath,
       created_at: Date.now(),

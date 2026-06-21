@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { spawn, execSync } from 'child_process';
+import { v4 as uuidv4 } from 'uuid';
 import Database from './database';
 
 // Ensure ffmpeg/ffprobe are findable in packaged app (macOS .app has minimal PATH)
@@ -11,6 +12,12 @@ process.env.PATH = [process.env.PATH, ...extraPaths].join(':');
 
 let mainWindow: BrowserWindow | null = null;
 const db = new Database();
+
+function getThumbnailsDir(): string {
+  const dir = path.join(app.getPath('userData'), 'thumbnails');
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
 
 function getWindowBoundsPath() {
   return path.join(app.getPath('userData'), 'window-bounds.json');
@@ -85,11 +92,10 @@ ipcMain.handle('delete-project', (_e, id: string) => { db.deleteProject(id); ret
 
 // ── Import video ──────────────────────────────────────────────────────────────
 
-async function extractVideoMeta(filePath: string): Promise<{ aspectRatio: string; thumbnail: string | null }> {
+async function extractVideoMeta(filePath: string, thumbDestPath?: string): Promise<{ aspectRatio: string; thumbnailPath: string | null }> {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'scribe-meta-'));
-  const thumbPath = path.join(tmpDir, 'thumb.jpg');
   let aspectRatio = '16/9';
-  let thumbnail: string | null = null;
+  let thumbnailPath: string | null = null;
 
   try {
     // Probe for dimensions
@@ -110,7 +116,8 @@ async function extractVideoMeta(filePath: string): Promise<{ aspectRatio: string
   } catch {}
 
   try {
-    // Extract thumbnail
+    // Extract thumbnail directly to destination (or tmp if no dest provided)
+    const destPath = thumbDestPath ?? path.join(tmpDir, 'thumb.jpg');
     await new Promise<void>((resolve, reject) => {
       const proc = spawn('ffmpeg', [
         '-i', filePath,
@@ -118,16 +125,15 @@ async function extractVideoMeta(filePath: string): Promise<{ aspectRatio: string
         '-vframes', '1',
         '-vf', 'scale=320:-1',
         '-q:v', '5',
-        '-y', thumbPath,
+        '-y', destPath,
       ]);
       proc.on('close', code => code === 0 ? resolve() : reject());
     });
-    const data = fs.readFileSync(thumbPath);
-    thumbnail = 'data:image/jpeg;base64,' + data.toString('base64');
+    if (thumbDestPath) thumbnailPath = thumbDestPath;
   } catch {}
 
   fs.rmSync(tmpDir, { recursive: true, force: true });
-  return { aspectRatio, thumbnail };
+  return { aspectRatio, thumbnailPath };
 }
 
 ipcMain.handle('import-video', async () => {
@@ -139,14 +145,18 @@ ipcMain.handle('import-video', async () => {
   if (result.canceled || !result.filePaths.length) return null;
   const filePath = result.filePaths[0];
   const name = path.basename(filePath, path.extname(filePath));
-  const { aspectRatio, thumbnail } = await extractVideoMeta(filePath);
-  return db.createProject(name, filePath, aspectRatio, thumbnail ?? undefined);
+  const projectId = uuidv4();
+  const thumbPath = path.join(getThumbnailsDir(), `${projectId}.jpg`);
+  const { aspectRatio, thumbnailPath } = await extractVideoMeta(filePath, thumbPath);
+  return db.createProject(name, filePath, aspectRatio, thumbnailPath ?? undefined, projectId);
 });
 
 ipcMain.handle('import-video-path', async (_e, filePath: string) => {
   const name = path.basename(filePath, path.extname(filePath));
-  const { aspectRatio, thumbnail } = await extractVideoMeta(filePath);
-  return db.createProject(name, filePath, aspectRatio, thumbnail ?? undefined);
+  const projectId = uuidv4();
+  const thumbPath = path.join(getThumbnailsDir(), `${projectId}.jpg`);
+  const { aspectRatio, thumbnailPath } = await extractVideoMeta(filePath, thumbPath);
+  return db.createProject(name, filePath, aspectRatio, thumbnailPath ?? undefined, projectId);
 });
 
 ipcMain.handle('import-video-buffer', async (_e, name: string, buffer: ArrayBuffer) => {
@@ -156,15 +166,18 @@ ipcMain.handle('import-video-buffer', async (_e, name: string, buffer: ArrayBuff
   const baseName = path.basename(name, ext);
   const destPath = path.join(videosDir, name);
   fs.writeFileSync(destPath, Buffer.from(buffer));
-  const { aspectRatio, thumbnail } = await extractVideoMeta(destPath);
-  return db.createProject(baseName, destPath, aspectRatio, thumbnail ?? undefined);
+  const projectId = uuidv4();
+  const thumbPath = path.join(getThumbnailsDir(), `${projectId}.jpg`);
+  const { aspectRatio, thumbnailPath } = await extractVideoMeta(destPath, thumbPath);
+  return db.createProject(baseName, destPath, aspectRatio, thumbnailPath ?? undefined, projectId);
 });
 
 ipcMain.handle('set-video-meta', async (_e, id: string) => {
   const project = db.getProject(id);
   if (!project) return false;
-  const { aspectRatio, thumbnail } = await extractVideoMeta(project.file_path);
-  db.setVideoMeta(id, aspectRatio, thumbnail);
+  const thumbPath = path.join(getThumbnailsDir(), `${id}.jpg`);
+  const { aspectRatio, thumbnailPath } = await extractVideoMeta(project.file_path, thumbPath);
+  db.setVideoMeta(id, aspectRatio, thumbnailPath);
   return db.getProject(id);
 });
 
