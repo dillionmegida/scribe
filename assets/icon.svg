@@ -14,17 +14,19 @@
     </linearGradient>
   </defs>
 
-  <rect width="1024" height="1024" rx="220" fill="url(#bg2)"/>
+  <g transform="translate(100, 100) scale(0.8046875)">
+    <rect width="1024" height="1024" rx="220" fill="url(#bg2)"/>
 
-  <!-- Large bold subtitle bars — fills the icon, very clear meaning -->
-  <!-- Line 1: long -->
-  <rect x="108" y="310" width="808" height="96" rx="48" fill="url(#pill)"/>
-  <!-- Line 2: medium, slightly dimmer -->
-  <rect x="108" y="448" width="600" height="96" rx="48" fill="url(#pillFade)" opacity="0.72"/>
-  <!-- Line 3: short, even dimmer — trailing off effect -->
-  <rect x="108" y="586" width="380" height="96" rx="48" fill="url(#pillFade)" opacity="0.42"/>
+    <!-- Large bold subtitle bars — fills the icon, very clear meaning -->
+    <!-- Line 1: long -->
+    <rect x="108" y="310" width="808" height="96" rx="48" fill="url(#pill)"/>
+    <!-- Line 2: medium, slightly dimmer -->
+    <rect x="108" y="448" width="600" height="96" rx="48" fill="url(#pillFade)" opacity="0.72"/>
+    <!-- Line 3: short, even dimmer — trailing off effect -->
+    <rect x="108" y="586" width="380" height="96" rx="48" fill="url(#pillFade)" opacity="0.42"/>
 
-  <!-- Tiny play caret top-right to hint "video" -->
-  <circle cx="850" cy="186" r="68" fill="rgba(124,92,252,0.18)" stroke="#7c5cfc" stroke-width="5"/>
-  <path d="M 836 158 L 882 186 L 836 214 Z" fill="#a78bfa"/>
+    <!-- Tiny play caret top-right to hint "video" -->
+    <circle cx="850" cy="186" r="68" fill="rgba(124,92,252,0.18)" stroke="#7c5cfc" stroke-width="5"/>
+    <path d="M 836 158 L 882 186 L 836 214 Z" fill="#a78bfa"/>
+  </g>
 </svg>
