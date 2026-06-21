@@ -49,7 +49,15 @@ export default class Database {
   }
 
   getProjects(): Project[] {
-    return [...this.data.projects].sort((a, b) => b.created_at - a.created_at);
+    return [...this.data.projects]
+      .sort((a, b) => b.created_at - a.created_at)
+      .map(({ transcription, ...rest }) => ({ ...rest, transcription: null }));
+  }
+
+  getProjectsLight(): Omit<Project, 'transcription' | 'thumbnail'>[] {
+    return [...this.data.projects]
+      .sort((a, b) => b.created_at - a.created_at)
+      .map(({ transcription, thumbnail, ...rest }) => rest);
   }
 
   getProject(id: string): Project | null {

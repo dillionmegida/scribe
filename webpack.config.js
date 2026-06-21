@@ -1,12 +1,16 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
+const isProd = process.env.NODE_ENV === 'production';
+
 module.exports = {
-  mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
+  mode: isProd ? 'production' : 'development',
   entry: './src/renderer/App.tsx',
   output: {
     path: path.resolve(__dirname, 'dist/renderer'),
-    filename: 'bundle.js',
+    filename: '[name].bundle.js',
+    chunkFilename: '[name].chunk.js',
+    clean: true,
   },
   resolve: {
     extensions: ['.tsx', '.ts', '.js'],
@@ -30,7 +34,7 @@ module.exports = {
     }),
   ],
   target: 'web',
-  devtool: 'source-map',
+  devtool: isProd ? false : 'source-map',
   devServer: {
     port: 3000,
     hot: true,

@@ -29,6 +29,7 @@ declare global {
       saveTranscription: (id: string, segments: Array<{ start: number; end: number; text: string }>) => Promise<boolean>;
       showInFinder: (filePath: string) => Promise<void>;
       checkFileExists: (filePath: string) => Promise<boolean>;
+      checkFilesExist: (filePaths: string[]) => Promise<Record<string, boolean>>;
       setVideoMeta: (id: string) => Promise<Project | false>;
       onTranscribeProgress: (cb: (data: { projectId: string; step: string; percent?: number }) => void) => () => void;
     };

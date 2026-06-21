@@ -166,7 +166,7 @@ const SegmentRow = styled.div<{ $active?: boolean }>`
 `;
 
 const Timestamp = styled.span`
-  font-family: 'DM Mono', monospace;
+  font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
   font-size: 11px;
   color: ${p => p.theme.textDim};
   padding-top: 1px;
@@ -288,7 +288,7 @@ const ErrorMsg = styled.div`
   max-width: 340px;
   text-align: center;
   line-height: 1.5;
-  font-family: 'DM Mono', monospace;
+  font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
   white-space: pre-wrap;
 `;
 

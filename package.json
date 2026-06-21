@@ -5,7 +5,7 @@
   "main": "dist/main/main.js",
   "scripts": {
     "build:main": "tsc -p tsconfig.json",
-    "build:renderer": "webpack --config webpack.config.js",
+    "build:renderer": "NODE_ENV=production webpack --config webpack.config.js",
     "build:icon": "node scripts/generate-icon.js",
     "start": "npm run build && electron .",
     "dev": "npm run build:main && concurrently --kill-others \"tsc -p tsconfig.json --watch\" \"webpack serve --config webpack.config.js\" \"wait-on http://localhost:3000 && NODE_ENV=development electronmon .\"",
@@ -74,7 +74,6 @@
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-router-dom": "^7.14.0",
-    "sql.js": "^1.14.1",
     "styled-components": "^6.3.12",
     "uuid": "^9.0.1"
   }

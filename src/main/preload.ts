@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('api', {
   saveTranscription: (id: string, segments: Array<{ start: number; end: number; text: string }>) => ipcRenderer.invoke('save-transcription', id, segments),
   showInFinder: (filePath: string) => ipcRenderer.invoke('show-in-finder', filePath),
   checkFileExists: (filePath: string) => ipcRenderer.invoke('check-file-exists', filePath),
+  checkFilesExist: (filePaths: string[]) => ipcRenderer.invoke('check-files-exist', filePaths),
   setVideoMeta: (id: string) => ipcRenderer.invoke('set-video-meta', id),
   onTranscribeProgress: (cb: (data: any) => void) => {
     ipcRenderer.on('transcribe-progress', (_e, data) => cb(data));

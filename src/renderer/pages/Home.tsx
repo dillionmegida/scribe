@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import { Project } from '../../renderer/types';
+import { getCachedProjects, setCachedProjects, setCachedThumbnail } from '../cache';
 
 const fadeIn = keyframes`from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); }`;
 
@@ -187,7 +188,7 @@ const RenameBtn = styled.button`
 const CardMeta = styled.div`
   font-size: 12px;
   color: ${p => p.theme.textMuted};
-  font-family: 'DM Mono', monospace;
+  font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
   margin-bottom: 14px;
 `;
 
@@ -382,6 +383,67 @@ const DropSub = styled.span`
   color: rgba(255,255,255,0.6);
 `;
 
+const shimmer = keyframes`
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+`;
+
+const LoadingWrap = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  min-height: 340px;
+  animation: ${fadeIn} 0.2s ease;
+`;
+
+const LoadingIcon = styled.div`
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: ${p => p.theme.accentDim};
+  border: 1px solid ${p => p.theme.border};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const LoadingBar = styled.div<{ $width: string }>`
+  width: ${p => p.$width};
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, ${p => p.theme.border} 0%, ${p => p.theme.accentDim} 50%, ${p => p.theme.border} 100%);
+  background-size: 800px 100%;
+  animation: ${shimmer} 1.5s infinite linear;
+`;
+
+const LoadingGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  width: 100%;
+`;
+
+const SkeletonCard = styled.div`
+  background: ${p => p.theme.surface};
+  border: 1px solid ${p => p.theme.border};
+  border-radius: ${p => p.theme.radius};
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const SkeletonRect = styled.div<{ $h?: string }>`
+  width: 100%;
+  height: ${p => p.$h || '120px'};
+  border-radius: 6px;
+  background: linear-gradient(90deg, ${p => p.theme.border} 0%, ${p => p.theme.accentDim} 50%, ${p => p.theme.border} 100%);
+  background-size: 800px 100%;
+  animation: ${shimmer} 1.5s infinite linear;
+`;
+
 const statusLabel: Record<string, string> = {
   pending: 'Not transcribed',
   transcribing: 'Transcribing',
@@ -394,7 +456,9 @@ function formatDate(ts: number) {
 }
 
 export default function Home() {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const cached = getCachedProjects();
+  const [projects, setProjects] = useState<Project[]>(cached || []);
+  const [initialising, setInitialising] = useState(!cached);
   const [loading, setLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
@@ -404,24 +468,36 @@ export default function Home() {
   const [missingFiles, setMissingFiles] = useState<Record<string, boolean>>({});
   const navigate = useNavigate();
 
-  const load = useCallback(async () => {
-    const p = await window.api.getProjects();
-    setProjects(p);
+  useEffect(() => {
+    // Always fetch fresh data (updates cache + state)
+    window.api.getProjects().then(p => {
+      setProjects(p);
+      setCachedProjects(p);
+      setInitialising(false);
+    });
   }, []);
 
-  useEffect(() => { load(); }, [load]);
-
+  const checkedRef = useRef(false);
   useEffect(() => {
-    if (!projects.length) return;
-    projects.forEach(async p => {
-      const exists = await window.api.checkFileExists(p.file_path);
-      setMissingFiles(prev => ({ ...prev, [p.id]: !exists }));
-      if (exists && !p.thumbnail) {
-        const updated = await window.api.setVideoMeta(p.id);
-        if (updated) setProjects(prev => prev.map(x => x.id === p.id ? updated as typeof x : x));
+    if (!projects.length || checkedRef.current) return;
+    checkedRef.current = true;
+    (async () => {
+      const paths = projects.map(p => p.file_path);
+      const existsMap = await window.api.checkFilesExist(paths);
+      const missing: Record<string, boolean> = {};
+      for (const p of projects) missing[p.id] = !existsMap[p.file_path];
+      setMissingFiles(missing);
+      for (const p of projects) {
+        if (existsMap[p.file_path] && !p.thumbnail) {
+          const updated = await window.api.setVideoMeta(p.id);
+          if (updated) {
+            if ((updated as Project).thumbnail) setCachedThumbnail(p.id, (updated as Project).thumbnail!);
+            setProjects(prev => prev.map(x => x.id === p.id ? updated as typeof x : x));
+          }
+        }
       }
-    });
-  }, [projects.map(p => p.id).join(',')]);
+    })();
+  }, [projects]);
 
   async function handleImport() {
     setLoading(true);
@@ -535,7 +611,17 @@ export default function Home() {
           </ImportBtn>
         </Header>
 
-        {projects.length === 0 ? (
+        {initialising ? (
+          <LoadingGrid>
+            {[1, 2, 3, 4, 5, 6].map(i => (
+              <SkeletonCard key={i}>
+                <SkeletonRect />
+                <SkeletonRect $h="14px" />
+                <SkeletonRect $h="10px" />
+              </SkeletonCard>
+            ))}
+          </LoadingGrid>
+        ) : projects.length === 0 ? (
           <EmptyState>
             <EmptyIcon>🎬</EmptyIcon>
             <strong>No projects yet</strong>

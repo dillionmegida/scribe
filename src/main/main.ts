@@ -5,13 +5,38 @@ import * as os from 'os';
 import { spawn, execSync } from 'child_process';
 import Database from './database';
 
+// Ensure ffmpeg/ffprobe are findable in packaged app (macOS .app has minimal PATH)
+const extraPaths = ['/opt/homebrew/bin', '/usr/local/bin', '/usr/bin'];
+process.env.PATH = [process.env.PATH, ...extraPaths].join(':');
+
 let mainWindow: BrowserWindow | null = null;
 const db = new Database();
 
+function getWindowBoundsPath() {
+  return path.join(app.getPath('userData'), 'window-bounds.json');
+}
+
+function loadWindowBounds(): { width: number; height: number; x?: number; y?: number } {
+  try {
+    const raw = fs.readFileSync(getWindowBoundsPath(), 'utf-8');
+    return JSON.parse(raw);
+  } catch {
+    return { width: 1200, height: 780 };
+  }
+}
+
+function saveWindowBounds() {
+  if (!mainWindow) return;
+  const bounds = mainWindow.getBounds();
+  fs.writeFileSync(getWindowBoundsPath(), JSON.stringify(bounds));
+}
+
 function createWindow() {
+  const bounds = loadWindowBounds();
+
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 780,
+    ...bounds,
+    show: false,
     minWidth: 900,
     minHeight: 600,
     titleBarStyle: 'hiddenInset',
@@ -26,6 +51,10 @@ function createWindow() {
     },
   });
 
+  mainWindow.on('resize', saveWindowBounds);
+  mainWindow.on('move', saveWindowBounds);
+  mainWindow.once('ready-to-show', () => mainWindow?.show());
+
   if (process.env.NODE_ENV === 'development') {
     mainWindow.loadURL('http://localhost:3000');
   } else {
@@ -35,7 +64,9 @@ function createWindow() {
 
 app.whenReady().then(() => {
   createWindow();
-  mainWindow?.webContents.openDevTools();
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow?.webContents.openDevTools();
+  }
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -47,7 +78,7 @@ app.on('window-all-closed', () => {
 
 // ── Projects ──────────────────────────────────────────────────────────────────
 
-ipcMain.handle('get-projects', () => db.getProjects());
+ipcMain.handle('get-projects', () => db.getProjectsLight());
 ipcMain.handle('get-project', (_e, id: string) => db.getProject(id));
 ipcMain.handle('rename-project', (_e, id: string, name: string) => { db.renameProject(id, name); return true; });
 ipcMain.handle('delete-project', (_e, id: string) => { db.deleteProject(id); return true; });
@@ -396,6 +427,12 @@ ipcMain.handle('show-in-finder', (_e, filePath: string) => {
 
 ipcMain.handle('check-file-exists', (_e, filePath: string) => {
   return fs.existsSync(filePath);
+});
+
+ipcMain.handle('check-files-exist', (_e, filePaths: string[]) => {
+  const result: Record<string, boolean> = {};
+  for (const fp of filePaths) result[fp] = fs.existsSync(fp);
+  return result;
 });
 
 ipcMain.handle('get-video-thumbnail', async (_e, filePath: string) => {
